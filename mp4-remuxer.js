@@ -24,10 +24,16 @@ class MP4Remuxer extends EventEmitter {
     }
 
     let toSkip = 0
+    let fileStream
     this._decoder = mp4.decode()
-    const fileStream = this._file.createReadStream({
-      start: offset
-    })
+    try {
+      fileStream = this._file.createReadStream({
+        start: offset
+      })
+    } catch (err) {
+      if (err.name === 'RangeError') return this.emit('error', new UnsupportedContainerError('Moov atom not found'))
+      return this.emit('error', err)
+    }
     fileStream.pipe(this._decoder)
 
     const boxHandler = headers => {
@@ -472,5 +478,12 @@ function empty () {
 }
 
 const MIN_FRAGMENT_DURATION = 1 // second
+
+class UnsupportedContainerError extends Error {
+  constructor(message) {
+    super(message)
+    this.name = 'UnsupportedContainerError'
+  }
+}
 
 module.exports = MP4Remuxer
